@@ -6,50 +6,42 @@
 #include <iostream>
 #include <unblending/unblending.hpp>
 #include <unblending/equations.hpp>
-#include <cxxopts.hpp>
+#include <unblending/CLI11.hpp>
 
 using namespace unblending;
 
 int main(int argc, char** argv)
 {
-    cxxopts::Options options("unblending-cli", " - A command line interface (CLI) for using the ``unblending'' library.");
+    CLI::App app("Unblending-cli - A command line interface (CLI) for using the ``unblending'' library.");
+
+    std::string output_directory_path = "./out";
+    app.add_option("-o,--outdir", output_directory_path, "Path to the output directory");
     
-    options.add_options()("o,outdir", "Path to the output directory", cxxopts::value<std::string>()->default_value("./out"));
-    options.add_options()("w,width", "Target width (pixels) of the output image (default: original resolution)", cxxopts::value<int>());
-    options.add_options()("h,help", "Print help");
-    options.add_options()("e,explicit-mode-names", "Append blend mode names to output image file names");
-    options.add_options()("v,verbose-export", "Export intermediate files as well as final outcomes");
-    options.add_options()("input-image-path", "Path to the input image (png or jpg)", cxxopts::value<std::string>());
-    options.add_options()("layer-infos-path", "Path to the layer infos (json)", cxxopts::value<std::string>());
+    int width;
+    app.add_option("-w,--width", width, "Target width (pixels) of the output image (default: original resolution)");
+
+    bool use_explicit_name;
+    app.add_flag("-e,--explicit-mode-names", use_explicit_name, "Append blend mode names to output image file names");
     
-    options.parse_positional({ "input-image-path", "layer-infos-path" });
-    options.positional_help("<input-image-path> <layer-infos-path>");
-    options.show_positional_help();
+    bool export_verbosely;
+    app.add_flag("-v,--verbose-export", export_verbosely, "Export intermediate files as well as final outcomes");
     
-    const auto parse_result = options.parse(argc, argv);
-    
-    if (parse_result.count("input-image-path") != 1 ||
-        parse_result.count("layer-infos-path") != 1 ||
-        parse_result.count("help"))
-    {
-        std::cout << options.help() << std::endl;
-        exit(0);
-    }
-    
-    const std::string image_file_path       = parse_result["input-image-path"].as<std::string>();
-    const std::string layer_infos_path      = parse_result["layer-infos-path"].as<std::string>();
-    const std::string output_directory_path = parse_result["outdir"].as<std::string>();
-    const bool        use_explicit_name     = parse_result.count("explicit-mode-names");
-    const bool        export_verbosely      = parse_result.count("verbose-export");
-    
+    std::string image_file_path;
+    app.add_option("-i,--input-image-path", image_file_path, "Path to the input image (png or jpg)") -> required();
+
+    std::string layer_infos_path;
+    app.add_option("-l,--layer-infos-path", layer_infos_path, "Path to the layer infos (json)") -> required();
+
+    CLI11_PARSE(app, argc, argv);
+
     if (std::system(("mkdir -p " + output_directory_path).c_str()) < 0) { exit(1); };
     
     // Import the target image and resize it if a target width is specified
     const ColorImage original_image = [&]()
     {
         const ColorImage image(image_file_path);
-        const bool use_target_width = (parse_result["width"].count() == 1);
-        return use_target_width ? image.get_scaled_image(parse_result["width"].as<int>()) : image;
+        const bool use_target_width = (app.count("--width") == 1);
+        return use_target_width ? image.get_scaled_image(width) : image;
     }();
     
     // Prepare layer infos
