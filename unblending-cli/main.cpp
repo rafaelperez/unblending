@@ -20,10 +20,10 @@ int main(int argc, char** argv)
     int width;
     app.add_option("-w,--width", width, "Target width (pixels) of the output image (default: original resolution)");
 
-    bool use_explicit_name;
+    bool use_explicit_name = false;
     app.add_flag("-e,--explicit-mode-names", use_explicit_name, "Append blend mode names to output image file names");
     
-    bool export_verbosely;
+    bool export_verbosely = false;
     app.add_flag("-v,--verbose-export", export_verbosely, "Export intermediate files as well as final outcomes");
     
     std::string image_file_path;
@@ -31,6 +31,12 @@ int main(int argc, char** argv)
 
     std::string layer_infos_path;
     app.add_option("-l,--layer-infos-path", layer_infos_path, "Path to the layer infos (json)") -> required();
+
+    bool has_opaque_background = false;
+    app.add_flag("--opaque-bg", has_opaque_background, "Set the first layer to have a opaque or semi-transparent alpha. Set to `false` for getting Aksoy similar results.");
+
+    bool force_smooth_background = false;
+    app.add_flag("--smooth-bg", force_smooth_background, "Run in the guided filtering also on the first color layer.");
 
     CLI11_PARSE(app, argc, argv);
 
@@ -47,10 +53,6 @@ int main(int argc, char** argv)
     // Prepare layer infos
     std::vector<LayerInfo> layer_infos = import_layer_infos(layer_infos_path);
     
-    // TODO: Allow users to specify these variables
-    constexpr bool has_opaque_background   = true;
-    constexpr bool force_smooth_background = true;
-    
     // Compute color unmixing to obtain an initial result
     const std::vector<ColorImage> layers = compute_color_unmixing(original_image, layer_infos, has_opaque_background);
     
@@ -58,6 +60,7 @@ int main(int argc, char** argv)
     const std::vector<ColorImage> refined_layers = perform_matte_refinement(original_image, layers, layer_infos, has_opaque_background, force_smooth_background);
     
     // Export layers
+    std::cout << export_verbosely << std::endl;
     if (export_verbosely) { export_layers(layers, output_directory_path, "non-smoothed-layer", true, use_explicit_name, layer_infos); }
     export_layers(refined_layers, output_directory_path, "layer", export_verbosely, use_explicit_name, layer_infos);
     

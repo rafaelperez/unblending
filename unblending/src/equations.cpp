@@ -1,7 +1,7 @@
 #include <unblending/equations.hpp>
 #include <unblending/color_model.hpp>
 
-//#define AKSOY_PERFORMANCE_TEST_OPTION
+#define AKSOY_PERFORMANCE_TEST_OPTION
 
 namespace unblending
 {
